@@ -1,0 +1,5 @@
+class UserComponent {
+  setCurrentStep() {}
+
+  renderNextStep() {}
+}
