@@ -1,7 +1,7 @@
 const admin = {};
 const user = {};
 
-module.exports = {
+const constants = {
   steps: {
     START_BOT: "START_BOT",
     ADAPTATION_CONTENT: "ADAPTATION_CONTENT",
@@ -12,8 +12,21 @@ module.exports = {
     ABOUT_COMMUNICATION: "ABOUT_COMMUNICATION",
     EXTRA_INFO_ABOUT_PLATFORM: "EXTRA_INFO_ABOUT_PLATFORM",
     CONTRACT: "CONTRACT",
+    // ...
+    MAIN_MENU: "MAIN_MENU",
+    GENERAL_STATISTICS: "GENERAL_STATISTICS",
+    SEARCH_USER: "SEARCH_USER",
   },
   commands: {
     POST: "post",
   },
 };
+
+const buttons = {
+  BACK_BUTTON: { text: "⬅️ Назад" },
+  COMMON_STATISTICS: { text: "📊 Общая статистика" },
+  ACTIVE_USERS: { text: "👥 Активные участники" },
+  SEARCH_USER: { text: "🔍 Поиск участника" },
+};
+
+module.exports = { buttons, constants };
