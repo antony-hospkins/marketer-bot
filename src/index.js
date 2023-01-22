@@ -369,6 +369,7 @@ const onClickButton = (id) => {
 
         if (fbId) {
           apiService.updateUser(fbId, {
+            finished_at: getUnixTime(),
             stages: {
               ...stages,
               0: { ...stages["0"], status: "done" },
