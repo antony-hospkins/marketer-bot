@@ -16,6 +16,7 @@ const constants = {
     MAIN_MENU: "MAIN_MENU",
     GENERAL_STATISTICS: "GENERAL_STATISTICS",
     SEARCH_USER: "SEARCH_USER",
+    GET_CONTACT_FOR_COMMUNICATION: "GET_CONTACT_FOR_COMMUNICATION",
   },
   commands: {
     POST: "post",
@@ -27,6 +28,14 @@ const buttons = {
   COMMON_STATISTICS: { text: "📊 Общая статистика" },
   ACTIVE_USERS: { text: "👥 Активные участники" },
   SEARCH_USER: { text: "🔍 Поиск участника" },
+  GET_CONTACT_FOR_COMMUNICATION: { text: "👤 Установить контакт для связи" },
+  // ...
+  THE_NEXT_ONE: { text: "Далее", id: "next-button" },
+  ASK_A_QUESTION: {
+    text: "❔ Задать вопрос",
+    url: "tg://user?id=<user_id>",
+    id: "ask-question-button",
+  },
 };
 
 module.exports = { buttons, constants };

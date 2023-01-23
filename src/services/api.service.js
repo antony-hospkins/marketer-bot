@@ -73,6 +73,24 @@ class ApiService {
       console.log(error);
     }
   }
+
+  async getContactForCommunication() {
+    try {
+      const { data } = await axios.get(`${this.url}/contactForCommunication.json`);
+      return data;
+    } catch (error) {
+      console.log(error);
+    }
+  }
+
+  async addContactForCommunication(username) {
+    try {
+      const { data } = await axios.patch(`${this.url}/contactForCommunication.json`, { username });
+      return data;
+    } catch (error) {
+      console.log(error);
+    }
+  }
 }
 
 module.exports = new ApiService("https://marketer-bot-default-rtdb.firebaseio.com");

@@ -3,13 +3,16 @@ const { Telegraf } = require("telegraf");
 const moment = require("moment");
 const { constants, buttons } = require("./constants");
 const { renderButtons, getUnixTime } = require("./helpers");
-const { userMessages } = require("./content");
+const { getUserMessages } = require("./content");
 const gsService = require("./services/gs.service");
 const LocalSession = require("telegraf-session-local");
 const apiService = require("./services/api.service.js");
 
 const bot = new Telegraf(process.env.BOT_TOKEN);
 bot.use(new LocalSession({ database: "session.json" }).middleware());
+
+const userMessages = getUserMessages();
+let CONTACT_FOR_COMMUNICATION = "";
 
 bot.start(async (ctx) => {
   const { from } = ctx.message;
@@ -27,21 +30,27 @@ bot.start(async (ctx) => {
     //   ctx.reply("Отчёт за ");
     // }, sendStatisticsIn);
 
-    // return ctx.reply("Что-бы воспользоваться меню администратора введите комманду /menu");
     const chatId = ctx.chat.id;
     ctx.session.current_step = constants.steps.MAIN_MENU;
     bot.telegram.sendMessage(chatId, "Вы находитесь в главном меню администратора", {
       reply_markup: {
-        keyboard: [[buttons.COMMON_STATISTICS, buttons.ACTIVE_USERS], [buttons.SEARCH_USER]],
+        keyboard: [
+          [buttons.COMMON_STATISTICS, buttons.ACTIVE_USERS],
+          [buttons.SEARCH_USER],
+          [buttons.GET_CONTACT_FOR_COMMUNICATION],
+        ],
         resize_keyboard: true,
       },
     });
   } else {
     ctx.session.current_step = constants.steps.START_BOT;
 
-    ctx.reply(userMessages?.[0]?.message);
-
     const user = await apiService.fetchUserByUsername(from?.username);
+    const contact = await apiService.getContactForCommunication();
+    CONTACT_FOR_COMMUNICATION = contact?.username;
+
+    const userMessagesWithUsername = getUserMessages(CONTACT_FOR_COMMUNICATION);
+    await ctx.reply(userMessagesWithUsername?.[0]?.message);
     const isExist = user?.id;
 
     if (!isExist) {
@@ -63,14 +72,13 @@ bot.start(async (ctx) => {
       };
 
       const data = await apiService.addUser(ctx.session.userData);
-
+      await apiService.updateUser(data?.name, { ...ctx.session.userData, fbId: data?.name });
       ctx.session.userData = {
         ...ctx.session.userData,
         fbId: data?.name,
       };
+      return;
     }
-
-    return;
   }
 });
 
@@ -82,7 +90,11 @@ bot.on("message", async (ctx) => {
 
     return bot.telegram.sendMessage(chatId, "Вы находитесь в главном меню администратора", {
       reply_markup: {
-        keyboard: [[buttons.COMMON_STATISTICS, buttons.ACTIVE_USERS], [buttons.SEARCH_USER]],
+        keyboard: [
+          [buttons.COMMON_STATISTICS, buttons.ACTIVE_USERS],
+          [buttons.SEARCH_USER],
+          [buttons.GET_CONTACT_FOR_COMMUNICATION],
+        ],
         resize_keyboard: true,
       },
     });
@@ -144,6 +156,21 @@ bot.on("message", async (ctx) => {
           }
         );
       }
+
+      case buttons.GET_CONTACT_FOR_COMMUNICATION.text: {
+        ctx.session.current_step = constants.steps.GET_CONTACT_FOR_COMMUNICATION;
+
+        return bot.telegram.sendMessage(
+          chatId,
+          "Введите username отвественного за помощь по адаптации",
+          {
+            reply_markup: {
+              keyboard: [[buttons.BACK_BUTTON]],
+              resize_keyboard: true,
+            },
+          }
+        );
+      }
     }
   }
 
@@ -187,12 +214,22 @@ ${passedUnsuccessfully} - не прошли бота`);
     }
   }
 
+  if (ctx.session.current_step === constants.steps.GET_CONTACT_FOR_COMMUNICATION) {
+    const username = ctx?.update?.message?.text;
+    ctx.session.current_step = constants.steps.MAIN_MENU;
+
+    await apiService.addContactForCommunication(username);
+
+    return ctx.reply(
+      `@${username.split("@").join("")} установлен как контакт для помощи по адаптации`
+    );
+  }
   // ---------------------------------
   if (ctx.session.current_step === constants.steps.START_BOT) {
     const { fbId, stages } = ctx.session.userData;
 
     if (fbId) {
-      apiService.updateUser(fbId, {
+      await apiService.updateUser(fbId, {
         stages: {
           ...stages,
           0: { ...stages["0"], status: "done" },
@@ -203,10 +240,14 @@ ${passedUnsuccessfully} - не прошли бота`);
 
     ctx.session.current_step = constants.steps.ADAPTATION_CONTENT;
 
-    return ctx.reply(
-      userMessages?.[1]?.message,
-      renderButtons([{ title: "Далее", id: "next-button" }])
-    );
+    return bot.telegram.sendMessage(ctx.chat.id, userMessages?.[1]?.message, {
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: "Далее", callback_data: "next-button" }],
+          [{ text: "Задать вопрос", url: `https://t.me/${CONTACT_FOR_COMMUNICATION}` }],
+        ],
+      },
+    });
   }
 
   // ...
@@ -216,7 +257,7 @@ ${passedUnsuccessfully} - не прошли бота`);
 
       const { fbId, stages } = ctx.session.userData;
       if (fbId) {
-        apiService.updateUser(fbId, {
+        await apiService.updateUser(fbId, {
           stages: {
             ...stages,
             0: { ...stages["0"], status: "done" },
@@ -228,10 +269,14 @@ ${passedUnsuccessfully} - не прошли бота`);
         });
       }
 
-      return ctx.reply(
-        userMessages?.[4]?.message,
-        renderButtons([{ title: "Далее", id: "next-button" }])
-      );
+      return bot.telegram.sendMessage(ctx.chat.id, userMessages?.[4]?.message, {
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: "Далее", callback_data: "next-button" }],
+            [{ text: "Задать вопрос", url: `https://t.me/${CONTACT_FOR_COMMUNICATION}` }],
+          ],
+        },
+      });
     } else {
       return ctx.reply("Пожалуйста, отправь скриншот личного кабинета на платформе");
     }
@@ -248,7 +293,7 @@ const onClickButton = (id) => {
 
         const { fbId, stages } = ctx.session.userData;
         if (fbId) {
-          apiService.updateUser(fbId, {
+          await apiService.updateUser(fbId, {
             stages: {
               ...stages,
               0: { ...stages["0"], status: "done" },
@@ -258,10 +303,14 @@ const onClickButton = (id) => {
           });
         }
 
-        return ctx.reply(
-          userMessages?.[2]?.message,
-          renderButtons([{ title: "Далее", id: "next-button" }])
-        );
+        return bot.telegram.sendMessage(ctx.chat.id, userMessages?.[2]?.message, {
+          reply_markup: {
+            inline_keyboard: [
+              [{ text: "Далее", callback_data: "next-button" }],
+              [{ text: "Задать вопрос", url: `https://t.me/${CONTACT_FOR_COMMUNICATION}` }],
+            ],
+          },
+        });
       }
 
       if (ctx.session.current_step === constants.steps.HOW_WE_WORK) {
@@ -270,7 +319,7 @@ const onClickButton = (id) => {
         const { fbId, stages } = ctx.session.userData;
 
         if (fbId) {
-          apiService.updateUser(fbId, {
+          await apiService.updateUser(fbId, {
             stages: {
               ...stages,
               0: { ...stages["0"], status: "done" },
@@ -290,7 +339,7 @@ const onClickButton = (id) => {
         const { fbId, stages } = ctx.session.userData;
 
         if (fbId) {
-          apiService.updateUser(fbId, {
+          await apiService.updateUser(fbId, {
             stages: {
               ...stages,
               0: { ...stages["0"], status: "done" },
@@ -303,10 +352,14 @@ const onClickButton = (id) => {
           });
         }
 
-        return ctx.reply(
-          userMessages?.[5]?.message,
-          renderButtons([{ title: "Далее", id: "next-button" }])
-        );
+        return bot.telegram.sendMessage(ctx.chat.id, userMessages?.[5]?.message, {
+          reply_markup: {
+            inline_keyboard: [
+              [{ text: "Далее", callback_data: "next-button" }],
+              [{ text: "Задать вопрос", url: `https://t.me/${CONTACT_FOR_COMMUNICATION}` }],
+            ],
+          },
+        });
       }
 
       if (ctx.session.current_step === constants.steps.DISTRIBUTION_OF_PROFILES) {
@@ -315,7 +368,7 @@ const onClickButton = (id) => {
         const { fbId, stages } = ctx.session.userData;
 
         if (fbId) {
-          apiService.updateUser(fbId, {
+          await apiService.updateUser(fbId, {
             stages: {
               ...stages,
               0: { ...stages["0"], status: "done" },
@@ -329,10 +382,14 @@ const onClickButton = (id) => {
           });
         }
 
-        return ctx.reply(
-          userMessages?.[6]?.message,
-          renderButtons([{ title: "Далее", id: "next-button" }])
-        );
+        return bot.telegram.sendMessage(ctx.chat.id, userMessages?.[6]?.message, {
+          reply_markup: {
+            inline_keyboard: [
+              [{ text: "Далее", callback_data: "next-button" }],
+              [{ text: "Задать вопрос", url: `https://t.me/${CONTACT_FOR_COMMUNICATION}` }],
+            ],
+          },
+        });
       }
 
       if (ctx.session.current_step === constants.steps.ABOUT_COMMUNICATION) {
@@ -341,7 +398,7 @@ const onClickButton = (id) => {
         const { fbId, stages } = ctx.session.userData;
 
         if (fbId) {
-          apiService.updateUser(fbId, {
+          await apiService.updateUser(fbId, {
             stages: {
               ...stages,
               0: { ...stages["0"], status: "done" },
@@ -356,10 +413,15 @@ const onClickButton = (id) => {
           });
         }
 
-        return ctx.replyWithHTML(
-          userMessages?.[7]?.message,
-          renderButtons([{ title: "Далее", id: "next-button" }])
-        );
+        return bot.telegram.sendMessage(ctx.chat.id, userMessages?.[7]?.message, {
+          reply_markup: {
+            inline_keyboard: [
+              [{ text: "Далее", callback_data: "next-button" }],
+              [{ text: "Задать вопрос", url: `https://t.me/${CONTACT_FOR_COMMUNICATION}` }],
+            ],
+          },
+          parse_mode: "HTML",
+        });
       }
 
       if (ctx.session.current_step === constants.steps.EXTRA_INFO_ABOUT_PLATFORM) {
@@ -368,7 +430,7 @@ const onClickButton = (id) => {
         const { fbId, stages } = ctx.session.userData;
 
         if (fbId) {
-          apiService.updateUser(fbId, {
+          await apiService.updateUser(fbId, {
             finished_at: getUnixTime(),
             stages: {
               ...stages,
@@ -385,10 +447,8 @@ const onClickButton = (id) => {
           });
         }
 
-        return ctx.replyWithHTML(
-          userMessages?.[8]?.message
-          // renderButtons([{ title: "Готов приступать", id: "ready-button" }])
-        );
+        const userMessagesWithUsername = getUserMessages(CONTACT_FOR_COMMUNICATION);
+        return ctx.replyWithHTML(userMessagesWithUsername?.[8]?.message);
       }
       // ============================
       if (ctx.session.current_step === constants.steps.START_BOT && id === "users-list") {
@@ -415,8 +475,8 @@ ${user?.stages
 };
 
 [{ title: "Далее", id: "next-button" }].forEach((button) => onClickButton(button.id));
-// ...
-[{ title: "Готов", id: "ready-button" }].forEach((button) => onClickButton(button.id));
+// [{ title: "Задать вопрос", id: "ask-question" }].forEach((button) => onClickButton(button.id));
+// [{ title: "Готов", id: "ready-button" }].forEach((button) => onClickButton(button.id));
 
 bot.launch();
 
