@@ -50,7 +50,6 @@ bot.start(async (ctx) => {
     CONTACT_FOR_COMMUNICATION = contact?.username;
 
     const userMessagesWithUsername = getUserMessages(CONTACT_FOR_COMMUNICATION);
-    await ctx.reply(userMessagesWithUsername?.[0]?.message);
     const isExist = user?.id;
 
     if (!isExist) {
@@ -77,8 +76,9 @@ bot.start(async (ctx) => {
         ...ctx.session.userData,
         fbId: data?.name,
       };
-      return;
     }
+
+    await ctx.reply(userMessagesWithUsername?.[0]?.message);
   }
 });
 
@@ -226,6 +226,7 @@ ${passedUnsuccessfully} - не прошли бота`);
   }
   // ---------------------------------
   if (ctx.session.current_step === constants.steps.START_BOT) {
+    ctx.session.current_step = constants.steps.ADAPTATION_CONTENT;
     const { fbId, stages } = ctx.session.userData;
 
     if (fbId) {
@@ -237,8 +238,6 @@ ${passedUnsuccessfully} - не прошли бота`);
         },
       });
     }
-
-    ctx.session.current_step = constants.steps.ADAPTATION_CONTENT;
 
     return bot.telegram.sendMessage(ctx.chat.id, userMessages?.[1]?.message, {
       reply_markup: {
@@ -449,24 +448,6 @@ const onClickButton = (id) => {
 
         const userMessagesWithUsername = getUserMessages(CONTACT_FOR_COMMUNICATION);
         return ctx.replyWithHTML(userMessagesWithUsername?.[8]?.message);
-      }
-      // ============================
-      if (ctx.session.current_step === constants.steps.START_BOT && id === "users-list") {
-        const data = await apiService.fetchUsers();
-
-        let message = ``;
-
-        data.forEach((user) => {
-          message = `${message} \n\n Пользователь @${user?.username}
-
-Прогресс:
-${user?.stages
-  ?.map((stage) => stage?.title && ` - ${stage?.title}\n`)
-  .join("")
-  .split(",")}`;
-        });
-
-        ctx.reply(message);
       }
     } catch (error) {
       // ...
