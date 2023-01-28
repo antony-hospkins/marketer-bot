@@ -78,7 +78,7 @@ bot.start(async (ctx) => {
       };
     }
 
-    await ctx.reply(userMessagesWithUsername?.[0]?.message);
+    await ctx.replyWithHTML(userMessagesWithUsername?.[0]?.message);
   }
 });
 
@@ -199,7 +199,7 @@ ${passedUnsuccessfully} - не прошли бота`);
   }
 
   if (ctx.session.current_step === constants.steps.SEARCH_USER) {
-    const username = ctx?.update?.message?.text;
+    const username = ctx?.update?.message?.text?.split("@").join("");
     const user = await apiService.fetchUserByUsername(username);
 
     if (user) {
@@ -246,6 +246,7 @@ ${passedUnsuccessfully} - не прошли бота`);
           [{ text: "Задать вопрос", url: `https://t.me/${CONTACT_FOR_COMMUNICATION}` }],
         ],
       },
+      parse_mode: "HTML",
     });
   }
 
@@ -275,6 +276,7 @@ ${passedUnsuccessfully} - не прошли бота`);
             [{ text: "Задать вопрос", url: `https://t.me/${CONTACT_FOR_COMMUNICATION}` }],
           ],
         },
+        parse_mode: "HTML",
       });
     } else {
       return ctx.reply("Пожалуйста, отправь скриншот личного кабинета на платформе");
@@ -309,6 +311,7 @@ const onClickButton = (id) => {
               [{ text: "Задать вопрос", url: `https://t.me/${CONTACT_FOR_COMMUNICATION}` }],
             ],
           },
+          parse_mode: "HTML",
         });
       }
 
@@ -329,7 +332,7 @@ const onClickButton = (id) => {
           });
         }
 
-        return ctx.reply(userMessages?.[3]?.message);
+        return ctx.replyWithHTML(userMessages?.[3]?.message);
       }
 
       if (ctx.session.current_step === constants.steps.STAGES_OF_WORK) {
@@ -358,6 +361,7 @@ const onClickButton = (id) => {
               [{ text: "Задать вопрос", url: `https://t.me/${CONTACT_FOR_COMMUNICATION}` }],
             ],
           },
+          parse_mode: "HTML",
         });
       }
 
@@ -388,6 +392,7 @@ const onClickButton = (id) => {
               [{ text: "Задать вопрос", url: `https://t.me/${CONTACT_FOR_COMMUNICATION}` }],
             ],
           },
+          parse_mode: "HTML",
         });
       }
 
