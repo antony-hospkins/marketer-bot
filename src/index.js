@@ -76,6 +76,11 @@ bot.start(async (ctx) => {
         ...ctx.session.userData,
         fbId: data?.name,
       };
+    } else {
+      ctx.session.userData = {
+        ...ctx.session.userData,
+        fbId: user?.fbId,
+      };
     }
 
     await ctx.replyWithHTML(userMessagesWithUsername?.[0]?.message);
