@@ -91,6 +91,17 @@ class ApiService {
       console.log(error);
     }
   }
+
+  async sendMessageToAdmin(username, adminId) {
+    const url = `https://api.telegram.org/bot${
+      process.env.BOT_TOKEN
+    }/sendMessage?chat_id=${adminId}&text=${`@${username} успешно прошёл бота 👍`}`;
+    try {
+      await axios.get(url);
+    } catch (error) {
+      console.log(error);
+    }
+  }
 }
 
 module.exports = new ApiService("https://marketer-bot-default-rtdb.firebaseio.com");

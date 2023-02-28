@@ -45,6 +45,15 @@ bot.start(async (ctx) => {
   } else {
     ctx.session.current_step = constants.steps.START_BOT;
 
+    if (!from?.username) {
+      await ctx.replyWithHTML(`Ооох... 😔 К сожалению у тебя отсутсвует username и мы не сможем связаться с тобой.
+
+Установи username для своего аккаунта и возвращайся.
+
+Будет достаточно лишь снова ввести комманду /start`);
+      return;
+    }
+
     const user = await apiService.fetchUserByUsername(from?.username);
     const contact = await apiService.getContactForCommunication();
     CONTACT_FOR_COMMUNICATION = contact?.username;
@@ -457,7 +466,9 @@ const onClickButton = (id) => {
         }
 
         const userMessagesWithUsername = getUserMessages(CONTACT_FOR_COMMUNICATION);
-        return ctx.replyWithHTML(userMessagesWithUsername?.[8]?.message);
+        await ctx.replyWithHTML(userMessagesWithUsername?.[8]?.message);
+        await apiService.sendMessageToAdmin(ctx.session.userData.username, 5028527949);
+        return;
       }
     } catch (error) {
       // ...
